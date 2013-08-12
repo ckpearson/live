@@ -98,6 +98,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EnableLiveTrackingSmartTagAction.cs" />
+    <Compile Include="IdentifierNameWalker.cs" />
     <Compile Include="Live.cs" />
     <Compile Include="MethodSmartTag.cs" />
     <Compile Include="MethodSmartTagTagger.cs" />

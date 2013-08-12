@@ -79,6 +79,24 @@ namespace Live
                 {
                     foreach (var methodSyntax in methWalker.FoundMethods)
                     {
+                        //// Exclude static methods
+                        //if (methodSyntax.Modifiers.Any(s => s.Kind == SyntaxKind.StaticKeyword))
+                        //{
+                        //    continue;
+                        //}
+
+                        //var variableWalker = new VariableWalker(null);
+                        //var identifierWalker = new IdentifierNameWalker();
+
+                        //variableWalker.Visit(methodSyntax.Body);
+                        //identifierWalker.Visit(methodSyntax.Body);
+
+                        //// Exclude any methods that make reference to a non-local item.
+                        //if (identifierWalker.FoundIdentifierNames.Select(i => i.Identifier.ValueText).Except(
+                        //    variableWalker.FoundVariables.Select(i => i.Identifier.ValueText)).Count() > 0)
+                        //{
+                        //    continue;
+                        //}
                         var ident = methodSyntax.Identifier;
                         TextExtent extent = navigator.GetExtentOfWord(new SnapshotPoint(snapshot, ident.Span.Start));
                         yield return new TagSpan<MethodSmartTag>(extent.Span, new MethodSmartTag(GetSmartTagActions(extent.Span, methodSyntax)));
@@ -109,11 +127,14 @@ namespace Live
         private void OnLayoutChanged(object sender, TextViewLayoutChangedEventArgs e)
         {
             ITextSnapshot snapshot = e.NewSnapshot;
-            SnapshotSpan span = new SnapshotSpan(snapshot, new Span(0, snapshot.Length));
-            if (this.TagsChanged != null)
-            {
-                this.TagsChanged(this, new SnapshotSpanEventArgs(span));
-            }
+            //if (!snapshot.GetText().ToLower().Equals(e.OldSnapshot.GetText().ToLower()))
+            //{
+                SnapshotSpan span = new SnapshotSpan(snapshot, new Span(0, snapshot.Length));
+                if (this.TagsChanged != null)
+                {
+                    this.TagsChanged(this, new SnapshotSpanEventArgs(span));
+                }
+            //}
         }
     }
 }
