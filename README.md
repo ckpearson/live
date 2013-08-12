@@ -8,7 +8,7 @@ Live-coding is the process of writing code and being able to see in realtime (or
 
 ## How will it work?
 
-C# is fundamentally adverse to live-coding because of it's compiled nature. However, certain methods can be taken out of context and run standalone or with minimal referencing.
+C# is fundamentally adverse to live-coding because of its compiled nature. However, certain methods can be taken out of context and run standalone or with minimal referencing.
 
 ```csharp
 public int Add(int x, int) {
