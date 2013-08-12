@@ -14,6 +14,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace Live
 {
@@ -135,9 +137,75 @@ namespace Live
         }
     }
 
+    public class TodoTagGlyphFactory : IGlyphFactory
+    {
+        const double m_glyphSize = 16.0;
+
+        public System.Windows.UIElement GenerateGlyph(Microsoft.VisualStudio.Text.Formatting.IWpfTextViewLine line, IGlyphTag tag)
+        {
+            if (tag == null || !(tag is TodoTag))
+            {
+                return null;
+            }
+
+            //var tg = (TodoTag)tag;
+
+            //var syn = tg._roslynLocalSymbol.DeclaringSyntaxNodes.First() as VariableDeclaratorSyntax ;
+            //if (syn == null)
+            //    return null;
+
+            //var dec = syn.ChildNodes();
+
+            var el = new Ellipse();
+            el.Fill = Brushes.LightBlue;
+            el.StrokeThickness = 2;
+            el.Stroke = Brushes.DarkBlue;
+            el.Height = m_glyphSize;
+            el.Width = m_glyphSize;
+
+            return el;
+        }
+    }
+
+    [Export(typeof(IGlyphFactoryProvider))]
+    [Name("TodoGlyph")]
+    [Order(After= "VsTextMarker")]
+    [ContentType("code")]
+    [TagType(typeof(TodoTag))]
+    public class TagGlyphFactoryProvider : IGlyphFactoryProvider
+    {
+        public IGlyphFactory GetGlyphFactory(IWpfTextView view, IWpfTextViewMargin margin)
+        {
+            return new TodoTagGlyphFactory();
+        }
+    }
+
+    public class TodoTag : IGlyphTag
+    {
+        public readonly Symbol _roslynLocalSymbol;
+
+        public TodoTag(Symbol symbol)
+        {
+            _roslynLocalSymbol = symbol;
+        }
+    }
+
+    [Export(typeof(ITaggerProvider))]
+    [ContentType("code")]
+    [TagType(typeof(TodoTag))]
+    public class TodoTaggerProvider : ITaggerProvider
+    {
+
+        public ITagger<T> CreateTagger<T>(ITextBuffer buffer) where T : ITag
+        {
+            return new TestSmartTagTagger(buffer, null, null) as ITagger<T>;
+        }
+    }
 
 
-    public class TestSmartTagTagger : ITagger<TestSmartTag>, IDisposable
+
+
+    public class TestSmartTagTagger : ITagger<TestSmartTag>, IDisposable, ITagger<TodoTag>
     {
         private ITextBuffer m_buffer;
         private ITextView m_view;
@@ -149,7 +217,8 @@ namespace Live
             m_buffer = buffer;
             m_view = view;
             m_provider = provider;
-            m_view.LayoutChanged += OnLayoutChanged;
+            if (m_view != null)
+             m_view.LayoutChanged += OnLayoutChanged;
         }
 
         // Searches for method declarations given a root node
@@ -215,7 +284,7 @@ namespace Live
                             yield return new TagSpan<TestSmartTag>(ext.Span, new TestSmartTag(GetSmartTagActions(ext.Span)));
                         }
                     }
-
+                    
                     // Put a smart tag on the method identifiers
                     var ident = meth.Identifier;
                     TextExtent extent = navigator.GetExtentOfWord(new SnapshotPoint(snapshot, ident.Span.Start));
@@ -296,11 +365,66 @@ namespace Live
             {
                 if (disposing)
                 {
-                    m_view.LayoutChanged -= OnLayoutChanged;
-                    m_view = null;
+                    if (m_view != null)
+                    {
+                        m_view.LayoutChanged -= OnLayoutChanged;
+                        m_view = null;
+                    }
                 }
 
                 m_disposed = true;
+            }
+        }
+
+        IEnumerable<ITagSpan<TodoTag>> ITagger<TodoTag>.GetTags(NormalizedSnapshotSpanCollection spans)
+        {
+            ITextSnapshot snapshot = m_buffer.CurrentSnapshot;
+            if (snapshot.Length == 0)
+                yield break;
+
+            //ITextStructureNavigator navigator = m_provider.NavigatorService.GetTextStructureNavigator(m_buffer);
+
+            foreach (var span in spans)
+            {
+                // Grab the code from vstudio editor
+                var code = new string(span.Snapshot.ToCharArray(0, snapshot.Length));
+
+                // Parse syntax into roslyn
+                var tree = SyntaxTree.ParseText(code);
+
+
+                var ctoken = new CancellationToken();   // Not used, but roslyn likes them
+                var root = (CommonSyntaxNode)tree.GetRoot(ctoken);  // Grab root node (usually the first using statement)
+
+                // Pull out all the method declarations roslyn could find
+                var methods = GetMethodNode(root);
+
+                foreach (var meth in methods)
+                {
+                    // Create compilation unit to access semantic model
+                    var comp = Compilation.Create("meth", syntaxTrees: new[] { meth.SyntaxTree });
+                    var model = comp.GetSemanticModel(meth.SyntaxTree);
+
+                    // Set up dummy walker which just pulls out variables
+                    var walker = new Walker(model);
+                    walker.Visit(meth); // Visit the method
+                    if (walker.Results.Any())
+                    {
+                        foreach (var local in walker.Results)
+                        {
+                            // Put a smart tag on the local variable identifiers
+                            var name = local.Name;
+                            //var ext = navigator.GetExtentOfWord(new SnapshotPoint(snapshot, local.DeclaringSyntaxNodes.First().Span.Start));
+                            //yield return new TagSpan<TestSmartTag>(ext.Span, new TestSmartTag(GetSmartTagActions(ext.Span)));
+                            yield return new TagSpan<TodoTag>(new SnapshotSpan(snapshot, local.DeclaringSyntaxNodes.First().Span.Start, local.DeclaringSyntaxNodes.First().Span.Length), new TodoTag(local));
+                        }
+                    }
+
+                    //// Put a smart tag on the method identifiers
+                    //var ident = meth.Identifier;
+                    //TextExtent extent = navigator.GetExtentOfWord(new SnapshotPoint(snapshot, ident.Span.Start));
+                    //yield return new TagSpan<TestSmartTag>(extent.Span, new TestSmartTag(GetSmartTagActions(extent.Span)));
+                }
             }
         }
     }
