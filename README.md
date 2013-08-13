@@ -2,6 +2,12 @@
 
 My go at enabling live-coding (however limited) in Visual Studio.
 
+##Requirements
+You will need:
++ Visual Studio 2012 (Version used to create this)
++ Roslyn CTP
++ Visual Studio SDK
+
 ## Live-coding?
 
 Live-coding is the process of writing code and being able to see in realtime (or near realtime) the results of that code. The inspiration for the project came from some groundwork done by Bret Victor http://www.worrydream.com.
