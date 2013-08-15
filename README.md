@@ -21,12 +21,14 @@ public int Add(int x, int) {
 	return x + y;
 }
 
-public object[] Reverse(object[] arr) {
-	object[] n = arr.Clone();
-	for(int i = 0; i < arr.Length; i++) {
-		n[arr.length - i] = arr[i];
-	}
-	return n;
+public object[] reverse(object[] arr)
+{
+    object[] nArr = new object[arr.Length];
+    for(int i = 0; i < arr.Length; i++)
+    {
+        nArr[(arr.Length - 1) - i] = arr[i];
+    }
+    return nArr;
 }
 ```
 The above methods are simple examples of methods that can be taken out of context of the application and executed alone.
